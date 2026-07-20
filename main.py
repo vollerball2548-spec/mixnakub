@@ -1,18 +1,19 @@
 from flask import Flask, jsonify
-
+# ===== เพิ่มส่วน DoS Protection ##---------##
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+# ===== สิ้นสุดส่วนที่เพิ่ม ##---------##
 import hashlib
 import hmac
 import secrets
 import string
 import time
 
-app = Flask(__name__)
-
+app = Flask(_name_)
 # แสดง JSON ตามลำดับที่เขียนไว้ใน Dictionary
 app.json.sort_keys = False
 
+# ===== เพิ่มส่วน DoS Protection ##---------##
 limiter = Limiter(
     key_func=get_remote_address,
     app=app,
@@ -20,14 +21,16 @@ limiter = Limiter(
     storage_uri="memory://",
     headers_enabled=True
 )
+# ===== สิ้นสุดส่วนที่เพิ่ม ##---------##
 
-WORK_FACTOR = 2000
+WORK_FACTOR = 2_000_000 ##---------##
 PASSWORD_LENGTH = 10
 SALT_SIZE_BYTES = 16
 
 
 def generate_random_password(length: int) -> str:
     characters = string.ascii_letters + string.digits
+
     return "".join(
         secrets.choice(characters)
         for _ in range(length)
@@ -52,8 +55,12 @@ def home():
 
 
 @app.route("/login-check")
-@limiter.limit("5 per second")
-# @limiter.limit("10 per minute")
+# ===== เพิ่มส่วน DoS Protection ##---------##
+# ป้องกันการส่งคำขอจำนวนมากในช่วงเวลาสั้น
+# @limiter.limit("5 per second")
+
+# ป้องกันการส่งคำขอต่อเนื่องเป็นเวลานาน
+@limiter.limit("10 per minute")
 def login_check():
     start_time = time.perf_counter()
 
@@ -83,15 +90,19 @@ def login_check():
         "algorithm": "PBKDF2-HMAC-SHA256",
         "work_factor": WORK_FACTOR,
 
-        "calculated_password_hash": calculated_password_hash.hex(),
-        "stored_password_hash": STORED_PASSWORD_HASH.hex(),
-        "hash_size_bits": len(calculated_password_hash) * 8,
+        "calculated_password_hash":
+            calculated_password_hash.hex(),
+        "stored_password_hash":
+            STORED_PASSWORD_HASH.hex(),
+        "hash_size_bits":
+            len(calculated_password_hash) * 8,
         "password_valid": password_is_valid,
-        "execution_time_seconds": round(execution_time, 4),
+        "execution_time_seconds":
+            round(execution_time, 4),
     })
 
 
-if __name__ == "__main__":
+if _name_ == "_main_":
     app.run(
         host="0.0.0.0",
         port=8080,
