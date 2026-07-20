@@ -51,6 +51,8 @@ def home():
 
 
 @app.route("/login-check")
+@limiter.limit("5 per second")
+#@limter.limit("10 per minute")
 def login_check():
     start_time = time.perf_counter()
 
