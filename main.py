@@ -2,31 +2,34 @@ from flask import Flask, jsonify
 
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+
 import hashlib
 import hmac
 import secrets
 import string
 import time
+import os
 
 app = Flask(__name__)
-# แสดง JSON ตามลำดับที่เขียนไว้ใน Dictionary
+
+# แสดง JSON ตามลำดับที่เขียนไว้
 app.json.sort_keys = False
+
 limiter = Limiter(
     key_func=get_remote_address,
-    app=app
+    app=app,
     default_limits=[],
     storage_uri="memory://",
-    headers_enabled=True
+    headers_enabled=True,
 )
 
-WORK_FACTOR = 2_000_000 ##---------##
+WORK_FACTOR = 200000
 PASSWORD_LENGTH = 10
 SALT_SIZE_BYTES = 16
 
 
 def generate_random_password(length: int) -> str:
     characters = string.ascii_letters + string.digits
-
     return "".join(
         secrets.choice(characters)
         for _ in range(length)
@@ -41,7 +44,7 @@ STORED_PASSWORD_HASH = hashlib.pbkdf2_hmac(
     "sha256",
     USER_PASSWORD.encode("utf-8"),
     PASSWORD_SALT,
-    WORK_FACTOR
+    WORK_FACTOR,
 )
 
 
@@ -52,7 +55,7 @@ def home():
 
 @app.route("/login-check")
 @limiter.limit("5 per second")
-#@limter.limit("10 per minute")
+# @limiter.limit("10 per minute")
 def login_check():
     start_time = time.perf_counter()
 
@@ -62,12 +65,12 @@ def login_check():
         "sha256",
         entered_password.encode("utf-8"),
         PASSWORD_SALT,
-        WORK_FACTOR
+        WORK_FACTOR,
     )
 
     password_is_valid = hmac.compare_digest(
         calculated_password_hash,
-        STORED_PASSWORD_HASH
+        STORED_PASSWORD_HASH,
     )
 
     execution_time = time.perf_counter() - start_time
@@ -76,27 +79,21 @@ def login_check():
         "username": USERNAME,
         "entered_password": entered_password,
         "password_length": len(entered_password),
-
         "salt_hex": PASSWORD_SALT.hex(),
         "salt_size_bits": len(PASSWORD_SALT) * 8,
         "algorithm": "PBKDF2-HMAC-SHA256",
         "work_factor": WORK_FACTOR,
-
-        "calculated_password_hash":
-            calculated_password_hash.hex(),
-        "stored_password_hash":
-            STORED_PASSWORD_HASH.hex(),
-        "hash_size_bits":
-            len(calculated_password_hash) * 8,
+        "calculated_password_hash": calculated_password_hash.hex(),
+        "stored_password_hash": STORED_PASSWORD_HASH.hex(),
+        "hash_size_bits": len(calculated_password_hash) * 8,
         "password_valid": password_is_valid,
-        "execution_time_seconds":
-            round(execution_time, 4),
+        "execution_time_seconds": round(execution_time, 4),
     })
 
 
 if __name__ == "__main__":
     app.run(
         host="0.0.0.0",
-        port=8080,
-        debug=False
+        port=int(os.environ.get("PORT", 8080)),
+        debug=False,
     )
